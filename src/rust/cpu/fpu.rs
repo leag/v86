@@ -674,6 +674,24 @@ pub unsafe fn fpu_fbstp(addr: i32) {
 }
 
 #[no_mangle]
+pub unsafe fn fpu_fbld(addr: i32) {
+    let mut value: i64 = 0;
+    let mut scale: i64 = 1;
+    for i in 0..=8 {
+        let b = return_on_pagefault!(safe_read8(addr + i));
+        value += (b & 0x0F) as i64 * scale;
+        scale *= 10;
+        value += ((b >> 4) & 0x0F) as i64 * scale;
+        scale *= 10;
+    }
+    let sign = return_on_pagefault!(safe_read8(addr + 9));
+    if sign & (1 << 7) != 0 {
+        value = -value;
+    }
+    fpu_push(F80::of_i64(value));
+}
+
+#[no_mangle]
 pub unsafe fn fpu_fsub(target_index: i32, val: F80) {
     let st0 = fpu_get_st0();
     fpu_write_st(*fpu_stack_ptr as i32 + target_index & 7, st0 - val)
