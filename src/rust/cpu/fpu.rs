@@ -498,9 +498,9 @@ pub unsafe fn fpu_fprem(ieee: bool) {
     let exp1 = st1.log2();
     let d = (exp0 - exp1).abs();
     if !intel_compatibility || d < F80::of_f64(f64::to_bits(64.0)) {
-        let fprem_quotient =
-            (if ieee { (st0 / st1).round() } else { (st0 / st1).trunc() }).to_i32();
-        fpu_write_st(*fpu_stack_ptr as i32, st0 % st1);
+        let fprem_quotient = if ieee { (st0 / st1).round() } else { (st0 / st1).trunc() };
+        fpu_write_st(*fpu_stack_ptr as i32, st0 - st1 * fprem_quotient);
+        let fprem_quotient = fprem_quotient.to_i32();
         *fpu_status_word &= !(FPU_C0 | FPU_C1 | FPU_C3);
         if 0 != fprem_quotient & 1 {
             *fpu_status_word |= FPU_C1
@@ -605,7 +605,13 @@ pub unsafe fn fpu_load_tag_word() -> i32 {
     return tag_word;
 }
 #[no_mangle]
-pub unsafe fn fpu_fst(r: i32) { fpu_write_st(*fpu_stack_ptr as i32 + r & 7, fpu_get_st0()); }
+pub unsafe fn fpu_fst(r: i32) {
+    let index: i32 = *fpu_stack_ptr as i32 + r & 7;
+    fpu_write_st(index, fpu_get_st0());
+    if 0 == ((*fpu_stack_empty >> *fpu_stack_ptr) & 1) {
+        *fpu_stack_empty &= !(1 << index);
+    }
+}
 pub unsafe fn fpu_fst80p(addr: i32) {
     return_on_pagefault!(writable_or_pagefault(addr, 10));
     fpu_store_m80(addr, fpu_get_st0());
