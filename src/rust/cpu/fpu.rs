@@ -563,9 +563,29 @@ pub unsafe fn fpu_store_m80(addr: i32, f: F80) {
 }
 
 #[no_mangle]
-pub unsafe fn fpu_fstenv16(_addr: i32) {
-    dbg_log!("fstenv16");
-    fpu_unimpl();
+pub unsafe fn fpu_fstenv16(addr: i32) {
+    match writable_or_pagefault(addr, 14) {
+        Ok(()) => *page_fault = false,
+        Err(()) => {
+            *page_fault = true;
+            return;
+        },
+    }
+    safe_write16(addr + 0, *fpu_control_word as i32).unwrap();
+    safe_write16(addr + 2, fpu_load_status_word() as i32).unwrap();
+    safe_write16(addr + 4, fpu_load_tag_word()).unwrap();
+    if *protected_mode {
+        safe_write16(addr + 6, *fpu_ip & 0xFFFF).unwrap();
+        safe_write16(addr + 8, *fpu_ip_selector).unwrap();
+        safe_write16(addr + 10, *fpu_dp & 0xFFFF).unwrap();
+        safe_write16(addr + 12, *fpu_dp_selector).unwrap();
+    }
+    else {
+        safe_write16(addr + 6, *fpu_ip & 0xFFFF).unwrap();
+        safe_write16(addr + 8, (*fpu_ip >> 16 & 0xF) << 12 | (*fpu_opcode & 0x7FF)).unwrap();
+        safe_write16(addr + 10, *fpu_dp & 0xFFFF).unwrap();
+        safe_write16(addr + 12, (*fpu_dp >> 16 & 0xF) << 12).unwrap();
+    }
 }
 
 #[no_mangle]
