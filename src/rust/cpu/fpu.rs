@@ -544,9 +544,15 @@ pub unsafe fn fpu_fprem(ieee: bool) {
     }
 }
 
-pub unsafe fn fpu_frstor16(_addr: i32) {
-    dbg_log!("frstor16");
-    fpu_unimpl();
+pub unsafe fn fpu_frstor16(mut addr: i32) {
+    return_on_pagefault!(readable_or_pagefault(addr, 14 + 8 * 10));
+    fpu_fldenv16(addr);
+    addr += 14;
+    for i in 0..8 {
+        let reg_index = *fpu_stack_ptr as i32 + i & 7;
+        *fpu_st.offset(reg_index as isize) = fpu_load_m80(addr).unwrap();
+        addr += 10;
+    }
 }
 pub unsafe fn fpu_frstor32(mut addr: i32) {
     return_on_pagefault!(readable_or_pagefault(addr, 28 + 8 * 10));
@@ -559,9 +565,16 @@ pub unsafe fn fpu_frstor32(mut addr: i32) {
     }
 }
 
-pub unsafe fn fpu_fsave16(_addr: i32) {
-    dbg_log!("fsave16");
-    fpu_unimpl();
+pub unsafe fn fpu_fsave16(mut addr: i32) {
+    return_on_pagefault!(writable_or_pagefault(addr, 94));
+    fpu_fstenv16(addr);
+    addr += 14;
+    for i in 0..8 {
+        let reg_index = i + *fpu_stack_ptr as i32 & 7;
+        fpu_store_m80(addr, *fpu_st.offset(reg_index as isize));
+        addr += 10;
+    }
+    fpu_finit();
 }
 pub unsafe fn fpu_fsave32(mut addr: i32) {
     return_on_pagefault!(writable_or_pagefault(addr, 108));
