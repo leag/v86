@@ -131,16 +131,26 @@ Remove the `dbg_log!` + `fpu_unimpl()` bodies.
 
 File: `src/rust/jit_instructions.rs`
 
-For each of the four ops (D9/4 FLDENV, D9/6 FSTENV, DD/4 FRSTOR, DD/6
-FSAVE):
+Only **D9/4 (FLDENV)** and **D9/6 (FSTENV)** have custom JIT handlers, and
+both currently call the `fpu_*32` functions (`instr16_*_mem_jit` calls the
+32-bit handler; `instr32_*_mem_jit` delegates to the 16-bit jit). Fix:
 
-- `instr16_*_mem_jit` calls the corresponding `fpu_*16` handler.
-- `instr32_*_mem_jit` calls the corresponding `fpu_*32` handler (no longer
-  delegating to the 16-bit jit).
+- `instr16_D9_4_mem_jit` -> `fpu_fldenv16`; `instr32_D9_4_mem_jit` ->
+  `fpu_fldenv32` (own body, no longer delegating).
+- `instr16_D9_6_mem_jit` -> `fpu_fstenv16`; `instr32_D9_6_mem_jit` ->
+  `fpu_fstenv32` (own body, no longer delegating).
 
-The surrounding codegen (modrm resolve, eip bookkeeping, register
-spill/reload, page-fault exit) stays identical to the current 32-bit jit
-bodies; only the `call_fn1` target name changes between the 16/32 wrappers.
+The two op bodies are identical except for the called function name, so a
+shared private helper takes the function name as a parameter to keep this
+DRY. The surrounding codegen (modrm resolve, eip bookkeeping, register
+spill/reload, page-fault exit) is unchanged.
+
+**DD/4 (FRSTOR) and DD/6 (FSAVE) need no JIT change.** They have no custom
+JIT handler; `src/rust/gen/jit.rs` routes them through
+`gen_modrm_fn0("instr16_DD_4_mem")` / `instr32_DD_4_mem` (and the DD/6
+equivalents), which already call the correct `fpu_frstor16` / `fpu_fsave16`
+/ `fpu_frstor32` / `fpu_fsave32` via the interpreter dispatchers in
+`instructions.rs`.
 
 ## Testing
 
