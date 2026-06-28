@@ -3553,7 +3553,7 @@ pub fn instr32_D9_3_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
     instr16_D9_3_mem_jit(ctx, modrm_byte)
 }
 
-pub fn instr16_D9_4_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
+fn gen_fldenv_fstenv_jit(ctx: &mut JitContext, modrm_byte: ModrmByte, name: &str) {
     codegen::gen_modrm_resolve(ctx, modrm_byte);
 
     codegen::gen_set_previous_eip_offset_from_eip_with_low_bits(
@@ -3562,7 +3562,7 @@ pub fn instr16_D9_4_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
     );
 
     codegen::gen_move_registers_from_locals_to_memory(ctx);
-    ctx.builder.call_fn1("fpu_fldenv32");
+    ctx.builder.call_fn1(name);
     codegen::gen_move_registers_from_memory_to_locals(ctx);
 
     codegen::gen_get_page_fault(ctx.builder);
@@ -3570,6 +3570,9 @@ pub fn instr16_D9_4_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
     codegen::gen_debug_track_jit_exit(ctx.builder, ctx.start_of_current_instruction);
     ctx.builder.br(ctx.exit_label);
     ctx.builder.block_end();
+}
+pub fn instr16_D9_4_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
+    gen_fldenv_fstenv_jit(ctx, modrm_byte, "fpu_fldenv16")
 }
 pub fn instr16_D9_4_reg_jit(ctx: &mut JitContext, r: u32) {
     match r {
@@ -3582,7 +3585,7 @@ pub fn instr16_D9_4_reg_jit(ctx: &mut JitContext, r: u32) {
 }
 pub fn instr32_D9_4_reg_jit(ctx: &mut JitContext, r: u32) { instr16_D9_4_reg_jit(ctx, r) }
 pub fn instr32_D9_4_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
-    instr16_D9_4_mem_jit(ctx, modrm_byte)
+    gen_fldenv_fstenv_jit(ctx, modrm_byte, "fpu_fldenv32")
 }
 
 pub fn instr16_D9_5_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
@@ -3603,29 +3606,14 @@ pub fn instr32_D9_5_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
 }
 
 pub fn instr16_D9_6_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
-    codegen::gen_modrm_resolve(ctx, modrm_byte);
-
-    codegen::gen_set_previous_eip_offset_from_eip_with_low_bits(
-        ctx.builder,
-        ctx.start_of_current_instruction as i32 & 0xFFF,
-    );
-
-    codegen::gen_move_registers_from_locals_to_memory(ctx);
-    ctx.builder.call_fn1("fpu_fstenv32");
-    codegen::gen_move_registers_from_memory_to_locals(ctx);
-
-    codegen::gen_get_page_fault(ctx.builder);
-    ctx.builder.if_void();
-    codegen::gen_debug_track_jit_exit(ctx.builder, ctx.start_of_current_instruction);
-    ctx.builder.br(ctx.exit_label);
-    ctx.builder.block_end();
+    gen_fldenv_fstenv_jit(ctx, modrm_byte, "fpu_fstenv16")
 }
 pub fn instr16_D9_6_reg_jit(ctx: &mut JitContext, r: u32) {
     codegen::gen_fn1_const(ctx.builder, "instr16_D9_6_reg", r);
 }
 pub fn instr32_D9_6_reg_jit(ctx: &mut JitContext, r: u32) { instr16_D9_6_reg_jit(ctx, r) }
 pub fn instr32_D9_6_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
-    instr16_D9_6_mem_jit(ctx, modrm_byte)
+    gen_fldenv_fstenv_jit(ctx, modrm_byte, "fpu_fstenv32")
 }
 
 pub fn instr16_D9_7_mem_jit(ctx: &mut JitContext, modrm_byte: ModrmByte) {
