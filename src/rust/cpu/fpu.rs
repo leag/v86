@@ -415,9 +415,28 @@ pub unsafe fn fpu_fldcw(addr: i32) {
 }
 
 #[no_mangle]
-pub unsafe fn fpu_fldenv16(_addr: i32) {
-    dbg_log!("fldenv16");
-    fpu_unimpl();
+pub unsafe fn fpu_fldenv16(addr: i32) {
+    if let Err(()) = readable_or_pagefault(addr, 14) {
+        *page_fault = true;
+        return;
+    }
+    *page_fault = false;
+    set_control_word(safe_read16(addr + 0).unwrap() as u16);
+    fpu_set_status_word(safe_read16(addr + 2).unwrap() as u16);
+    fpu_set_tag_word(safe_read16(addr + 4).unwrap());
+    if *protected_mode {
+        *fpu_ip = safe_read16(addr + 6).unwrap();
+        *fpu_ip_selector = safe_read16(addr + 8).unwrap();
+        *fpu_dp = safe_read16(addr + 10).unwrap();
+        *fpu_dp_selector = safe_read16(addr + 12).unwrap();
+    }
+    else {
+        let field8 = safe_read16(addr + 8).unwrap();
+        let field12 = safe_read16(addr + 12).unwrap();
+        *fpu_ip = safe_read16(addr + 6).unwrap() | (field8 & 0xF000) << 4;
+        *fpu_opcode = field8 & 0x7FF;
+        *fpu_dp = safe_read16(addr + 10).unwrap() | (field12 & 0xF000) << 4;
+    }
 }
 #[no_mangle]
 pub unsafe fn fpu_fldenv32(addr: i32) {
