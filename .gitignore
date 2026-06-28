@@ -13,6 +13,7 @@ images/
 *.bin
 *.img
 *.fixture
+tests/nasm/fuzz_fpuenv_*.asm
 *.fuse_hidden*
 *.DS_Store
 node_modules/

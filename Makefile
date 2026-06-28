@@ -315,6 +315,18 @@ nasmtests-force-jit: build/v86-debug.wasm
 	$(NASM_TEST_DIR)/gen_fixtures.js
 	$(NASM_TEST_DIR)/run.js --force-jit
 
+# Differential fuzzer for the x87 env/state ops (FLDENV/FSTENV/FRSTOR/FSAVE).
+# Generates randomized tests (override via FUZZ_COUNT / FUZZ_SEED), then runs
+# them through the standard gdb-golden harness. Generated .asm files are
+# git-ignored.
+FUZZ_COUNT ?= 300
+nasmtests-fpu-env-fuzz: build/v86-debug.wasm
+	$(NASM_TEST_DIR)/gen-fpu-env-fuzz.js --count $(FUZZ_COUNT) $(if $(FUZZ_SEED),--seed $(FUZZ_SEED),)
+	$(NASM_TEST_DIR)/create_tests.js
+	$(NASM_TEST_DIR)/gen_fixtures.js
+	TEST_NAME=fuzz_fpuenv $(NASM_TEST_DIR)/run.js
+	TEST_NAME=fuzz_fpuenv $(NASM_TEST_DIR)/run.js --force-jit
+
 jitpagingtests: build/v86-debug.wasm
 	$(MAKE) -C tests/jit-paging test-jit
 	./tests/jit-paging/run.js
